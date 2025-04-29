@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MINBA AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Scrollbar for chat messages */
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.5);
+      border-radius: 3px;
+    }
+    .chat-messages {
+      max-height: 400px;
+      height: calc(100vh - 150px);
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 1rem;
+    }
+    .message-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 100%;
+    }
+    .message {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .message.user {
+      align-self: flex-end;
+      background-color: #22c55e;
+      color: white;
+      border-bottom-right-radius: 0.25rem;
+    }
+    .message.ai {
+      align-self: flex-start;
+      background-color: #f3f4f6;
+      color: #111827;
+      border-bottom-left-radius: 0.25rem;
+    }
+    .ai-background {
+      position: relative;
+      background-color: #f8f9fa;
+    }
+    .ai-background::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 150px;
+      height: 150px;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322C55E"><path xmlns="http://www.w3.org/2000/svg" d="M598 1225 c-15 -13 -64 -37 -110 -54 -187 -70 -260 -121 -368 -260 -32 -42 -72 -85 -88 -95 -29 -19 -29 -19 -16 -64 8 -25 14 -84 14 -132 0 -164 25 -241 128 -397 33 -51 66 -108 72 -128 10 -31 15 -35 46 -35 19 0 87 -12 152 -27 152 -35 240 -35 397 0 66 15 135 28 154 29 30 3 36 8 43 36 5 17 33 68 63 113 106 155 135 239 135 394 0 50 6 114 13 141 l13 51 -28 19 c-16 11 -56 53 -88 95 -108 139 -186 193 -378 264 -40 15 -85 37 -100 50 l-27 23 -27 -23z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .header-button {
+      @apply text-white hover:text-gray-200 focus:outline-none p-2 rounded-full hover:bg-green-700 transition-colors duration-200;
+    }
+    .fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      z-index: 9999;
+    }
+    .fullscreen .chat-messages {
+      height: calc(100vh - 120px);
+      max-height: none;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .fullscreen .message {
+      max-width: 60%;
+    }
+    .message-delete-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 9999px;
+    }
+    .message:hover .message-delete-btn {
+      opacity: 1;
+    }
+    .user .message-delete-btn {
+      left: -2rem;
+    }
+    .ai .message-delete-btn {
+      right: -2rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Chatbot Toggle Button -->
+  <button id="chatbot-toggle" aria-label="Open Chatbot" class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-green-400">
+    <i class="fas fa-comments fa-lg"></i>
+  </button>
+
+  <!-- Chatbot Popup -->
+  <div id="chatbot-popup" class="fixed bottom-20 right-6 w-80 max-w-full bg-white rounded-lg shadow-xl flex flex-col overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300">
+    <!-- Header -->
+    <div class="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
+      <h2 class="text-lg font-semibold">MINBA AI</h2>
+      <div class="flex items-center space-x-4">
+        <button id="fullscreen-toggle" aria-label="Toggle Fullscreen" class="header-button">
+          <i class="fas fa-expand"></i>
+        </button>
+        <button id="clear-chat" aria-label="Clear Chat History" class="header-button">
+          <i class="fas fa-trash"></i>
+        </button>
+        <button id="chatbot-close" aria-label="Close Chatbot" class="header-button">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="chatbot-messages" class="chat-messages flex flex-col space-y-4 bg-gray-50 ai-background" aria-live="polite" aria-atomic="false" role="log">
+      <!-- Initial welcome message -->
+      <div class="message ai" aria-label="AI message">
+        Hai, ada yang bisa Minba bantu? 😊
+      </div>
+    </div>
+
+    <!-- Input area -->
+    <form id="chatbot-form" class="flex border-t border-gray-200">
+      <input id="chatbot-input" type="text" placeholder="Silahkan bertanya..." autocomplete="off" required class="flex-1 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+      <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 flex items-center justify-center transition-colors duration-200">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+
+  <script>
+    const toggleBtn = document.getElementById('chatbot-toggle');
+    const popup = document.getElementById('chatbot-popup');
+    const closeBtn = document.getElementById('chatbot-close');
+    const messagesContainer = document.getElementById('chatbot-messages');
+    const form = document.getElementById('chatbot-form');
+    const input = document.getElementById('chatbot-input');
+
+    // Chat history management
+    const CHAT_HISTORY_KEY = 'minbaai_chat_history';
+    
+    // Load chat history from localStorage
+    function loadChatHistory() {
+      const history = localStorage.getItem(CHAT_HISTORY_KEY);
+      if (history) {
+        const messages = JSON.parse(history);
+        messagesContainer.innerHTML = '';
+        messages.forEach(msg => {
+          appendMessage(msg.text, msg.sender, false);
+        });
+      }
+    }
+
+    // Save chat history to localStorage
+    function saveChatHistory() {
+      const messages = Array.from(messagesContainer.children).map(msg => ({
+        text: msg.childNodes[0].textContent.trim(),
+        sender: msg.classList.contains('user') ? 'user' : 'ai'
+      }));
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+    }
+
+    // Toggle popup visibility
+    function openPopup() {
+      popup.classList.remove('opacity-0', 'pointer-events-none');
+      popup.classList.add('opacity-100');
+      input.focus();
+    }
+    
+    function closePopup() {
+      popup.classList.add('opacity-0', 'pointer-events-none');
+      popup.classList.remove('opacity-100');
+      toggleBtn.focus();
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (popup.classList.contains('opacity-0')) {
+        openPopup();
+      } else {
+        closePopup();
+      }
+    });
+
+    closeBtn.addEventListener('click', closePopup);
+
+    // Append message to chat window
+    function appendMessage(text, sender = 'user', shouldSave = true) {
+      const messageEl = document.createElement('div');
+      messageEl.classList.add('message', sender);
+      messageEl.setAttribute('aria-label', sender === 'user' ? 'User message' : 'AI message');
+      messageEl.textContent = text;
+      
+      // Add delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+      deleteBtn.classList.add('message-delete-btn');
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        messageEl.remove();
+        if (shouldSave) {
+          saveChatHistory();
+        }
+      };
+      
+      messageEl.appendChild(deleteBtn);
+      messagesContainer.appendChild(messageEl);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      
+      if (shouldSave) {
+        saveChatHistory();
+      }
+    }
+
+    // Load chat history when page loads
+    document.addEventListener('DOMContentLoaded', loadChatHistory);
+
+    // Handle form submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userMessage = input.value.trim();
+      if (!userMessage) return;
+      appendMessage(userMessage, 'user');
+      input.value = '';
+      input.disabled = true;
+
+      // Show loading indicator
+      const loadingMessage = document.createElement('div');
+      loadingMessage.classList.add('message', 'ai');
+      loadingMessage.textContent = '...';
+      messagesContainer.appendChild(loadingMessage);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      const aiReply = await fetchAIResponse(userMessage);
+
+      // Remove loading indicator
+      messagesContainer.removeChild(loadingMessage);
+
+      appendMessage(aiReply, 'ai');
+      input.disabled = false;
+      input.focus();
+    });
+
+    // Clear chat history function
+    function clearChatHistory() {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      messagesContainer.innerHTML = '';
+      // Add back the welcome message
+      appendMessage("Hai, ada yang bisa Minba bantu? 😊", 'ai');
+    }
+
+    // Update fullscreen button icon and container size
+    function toggleFullscreen() {
+      const icon = fullscreenBtn.querySelector('i');
+      if (isFullscreen) {
+        popup.classList.add('fullscreen');
+        popup.classList.remove('bottom-20', 'right-6', 'w-80');
+        icon.classList.remove('fa-expand');
+        icon.classList.add('fa-compress');
+      } else {
+        popup.classList.remove('fullscreen');
+        popup.classList.add('bottom-20', 'right-6', 'w-80');
+        icon.classList.remove('fa-compress');
+        icon.classList.add('fa-expand');
+      }
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Fullscreen toggle
+    const fullscreenBtn = document.getElementById('fullscreen-toggle');
+    let isFullscreen = false;
+
+    fullscreenBtn.addEventListener('click', () => {
+      isFullscreen = !isFullscreen;
+      toggleFullscreen();
+    });
+
+    // Clear chat button
+    const clearChatBtn = document.getElementById('clear-chat');
+    clearChatBtn.addEventListener('click', clearChatHistory);
+
+    async function fetchAIResponse(message) {
+      const apiUrl = "https://flowiseai-railway-production-ed16.up.railway.app/api/v1/prediction/70457637-133c-45e8-b138-9aabdfbba300";
+
+      try {
+        console.log("Sending request to Flowise AI...");
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ question: message })
+        });
+        
+        console.log("Response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log("API Response data:", data);
+        
+        // Handle the correct response structure
+        if (data && data.text) {
+          return data.text;
+        }
+        return "Sorry, I did not understand that.";
+      } catch (error) {
+        console.error("Detailed error when fetching AI response:", error);
+        return `Sorry, there was an error processing your request: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
