@@ -278,31 +278,31 @@
       appendMessage("Hai, ada yang bisa Minba bantu? 😊", 'ai');
     }
 
-    // Update fullscreen button icon and container size
-    function toggleFullscreen() {
-      const icon = fullscreenBtn.querySelector('i');
-      if (isFullscreen) {
-        popup.classList.add('fullscreen');
-        popup.classList.remove('bottom-20', 'right-6', 'w-80');
-        icon.classList.remove('fa-expand');
-        icon.classList.add('fa-compress');
-      } else {
-        popup.classList.remove('fullscreen');
-        popup.classList.add('bottom-20', 'right-6', 'w-80');
-        icon.classList.remove('fa-compress');
-        icon.classList.add('fa-expand');
-      }
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
+    // // Update fullscreen button icon and container size
+    // function toggleFullscreen() {
+    //   const icon = fullscreenBtn.querySelector('i');
+    //   if (isFullscreen) {
+    //     popup.classList.add('fullscreen');
+    //     popup.classList.remove('bottom-20', 'right-6', 'w-80');
+    //     icon.classList.remove('fa-expand');
+    //     icon.classList.add('fa-compress');
+    //   } else {
+    //     popup.classList.remove('fullscreen');
+    //     popup.classList.add('bottom-20', 'right-6', 'w-80');
+    //     icon.classList.remove('fa-compress');
+    //     icon.classList.add('fa-expand');
+    //   }
+    //   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // }
 
-    // Fullscreen toggle
-    const fullscreenBtn = document.getElementById('fullscreen-toggle');
-    let isFullscreen = false;
+    // // Fullscreen toggle
+    // const fullscreenBtn = document.getElementById('fullscreen-toggle');
+    // let isFullscreen = false;
 
-    fullscreenBtn.addEventListener('click', () => {
-      isFullscreen = !isFullscreen;
-      toggleFullscreen();
-    });
+    // fullscreenBtn.addEventListener('click', () => {
+    //   isFullscreen = !isFullscreen;
+    //   toggleFullscreen();
+    // });
 
     // Clear chat button
     const clearChatBtn = document.getElementById('clear-chat');
