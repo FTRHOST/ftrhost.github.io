@@ -1,1 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MINBA AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* --- PERBAIKAN UTAMA UNTUK IFRAME --- */
+    html, body {
+      background-color: transparent; /* Agar background bening */
+      pointer-events: none;          /* Agar klik tembus ke website di belakangnya */
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* Mencegah scroll pada body utama */
+    }
 
+    /* Elemen Chatbot harus bisa diklik (pointer-events: auto) */
+    #chatbot-toggle, #chatbot-popup {
+      pointer-events: auto;
+    }
+    /* ------------------------------------ */
+
+    body { font-family: 'Inter', sans-serif; }
+    
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-thumb { background-color: rgba(100, 116, 139, 0.5); border-radius: 3px; }
+    .chat-messages {
+      height: calc(100vh - 150px);
+      max-height: 400px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 1rem;
+    }
+    .message {
+      max-width: 85%;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      position: relative;
+      word-wrap: break-word;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .message.user {
+      align-self: flex-end;
+      background-color: #22c55e;
+      color: white;
+      border-bottom-right-radius: 0.25rem;
+      flex-direction: row-reverse;
+    }
+    .message.ai {
+      align-self: flex-start;
+      background-color: #f3f4f6;
+      color: #111827;
+      border-bottom-left-radius: 0.25rem;
+    }
+    .ai-background {
+      position: relative;
+      background-color: #f8f9fa;
+    }
+    .ai-background::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 150px;
+      height: 150px;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322C55E"><path xmlns="http://www.w3.org/2000/svg" d="M598 1225 c-15 -13 -64 -37 -110 -54 -187 -70 -260 -121 -368 -260 -32 -42 -72 -85 -88 -95 -29 -19 -29 -19 -16 -64 8 -25 14 -84 14 -132 0 -164 25 -241 128 -397 33 -51 66 -108 72 -128 10 -31 15 -35 46 -35 19 0 87 -12 152 -27 152 -35 240 -35 397 0 66 15 135 28 154 29 30 3 36 8 43 36 5 17 33 68 63 113 106 155 135 239 135 394 0 50 6 114 13 141 l13 51 -28 19 c-16 11 -56 53 -88 95 -108 139 -186 193 -378 264 -40 15 -85 37 -100 50 l-27 23 -27 -23z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+    .header-button {
+      @apply text-white hover:text-gray-200 focus:outline-none p-2 rounded-full hover:bg-green-700 transition-colors duration-200;
+    }
+    .message-content { flex-grow: 1; }
+    .message-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: #9ca3af;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .message:hover .message-delete-btn { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <button id="chatbot-toggle" aria-label="Buka Chatbot" class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-green-400">
+    <i class="fas fa-comments fa-lg"></i>
+  </button>
+
+  <div id="chatbot-popup" class="fixed bottom-20 right-6 w-80 max-w-full bg-white rounded-lg shadow-xl flex flex-col overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-green-600 text-white px-4 py-3 flex justify-between items-center">
+      <h2 class="text-lg font-semibold">MINBA AI</h2>
+      <div class="flex items-center space-x-2">
+        <button id="clear-chat" aria-label="Hapus Riwayat Chat" class="header-button">
+          <i class="fas fa-trash"></i>
+        </button>
+        <button id="chatbot-close" aria-label="Tutup Chatbot" class="header-button">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="chatbot-messages" class="chat-messages flex flex-col space-y-4 bg-gray-50 ai-background" aria-live="polite" role="log">
+      </div>
+
+    <form id="chatbot-form" class="flex border-t border-gray-200">
+      <input id="chatbot-input" type="text" placeholder="Memuat data repo..." autocomplete="off" required class="flex-1 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100" disabled />
+      <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 flex items-center justify-center transition-colors duration-200 disabled:bg-green-400" disabled>
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+
+  <script>
+    // --- KONFIGURASI PENTING ---
+    const GEMINI_API_KEY = 'AIzaSyDFBxU1Hqz1bm83YsMu8EKVbY2RU6GNsLc'; // Ganti dengan API Key Anda
+    const MODEL_NAME = 'gemini-2.5-pro';
+    // --- AKHIR KONFIGURASI ---
+
+    const toggleBtn = document.getElementById('chatbot-toggle');
+    const popup = document.getElementById('chatbot-popup');
+    const closeBtn = document.getElementById('chatbot-close');
+    const messagesContainer = document.getElementById('chatbot-messages');
+    const form = document.getElementById('chatbot-form');
+    const input = document.getElementById('chatbot-input');
+    const submitButton = form.querySelector('button');
+    const clearChatBtn = document.getElementById('clear-chat');
+
+    const CHAT_HISTORY_KEY = 'minbaai_chat_history';
+    const WELCOME_MESSAGE = { text: "Hai! Saya adalah AI yang memiliki pengetahuan dari repositori. Ada yang bisa dibantu?", sender: 'ai' };
+    
+    let repoContext = '';
+
+    function initializeChat() {
+        const history = localStorage.getItem(CHAT_HISTORY_KEY);
+        messagesContainer.innerHTML = '';
+        if (history) {
+            const messages = JSON.parse(history);
+            if (messages.length > 0) {
+              messages.forEach(msg => appendMessage(msg.text, msg.sender, false));
+            } else {
+              appendMessage(WELCOME_MESSAGE.text, WELCOME_MESSAGE.sender, true);
+            }
+        } else {
+            appendMessage(WELCOME_MESSAGE.text, WELCOME_MESSAGE.sender, true);
+        }
+    }
+
+    function saveChatHistory() {
+        const messages = Array.from(messagesContainer.children).map(msgEl => ({
+            text: msgEl.querySelector('.message-content').textContent.trim(),
+            sender: msgEl.classList.contains('user') ? 'user' : 'ai'
+        }));
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+    }
+
+    function openPopup() {
+        popup.classList.remove('opacity-0', 'pointer-events-none');
+        popup.classList.add('opacity-100');
+        // Saat popup terbuka, pastikan interaksi aktif
+        popup.style.pointerEvents = "auto";
+        input.focus();
+    }
+
+    function closePopup() {
+        popup.classList.add('opacity-0', 'pointer-events-none');
+        popup.classList.remove('opacity-100');
+        toggleBtn.focus();
+    }
+
+    function appendMessage(text, sender = 'user', shouldSave = true) {
+        const messageEl = document.createElement('div');
+        messageEl.classList.add('message', sender);
+        messageEl.setAttribute('aria-label', `${sender} message`);
+
+        const contentEl = document.createElement('div');
+        contentEl.classList.add('message-content');
+        contentEl.textContent = text;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '<i class="fas fa-times fa-xs"></i>';
+        deleteBtn.classList.add('message-delete-btn');
+        deleteBtn.setAttribute('aria-label', 'Hapus pesan');
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            messageEl.remove();
+            if (shouldSave) saveChatHistory();
+        };
+        
+        messageEl.appendChild(contentEl);
+        messageEl.appendChild(deleteBtn);
+        messagesContainer.appendChild(messageEl);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        if (shouldSave) saveChatHistory();
+    }
+    
+    async function loadRepoContext() {
+        try {
+            const response = await fetch('./knowledge_base.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            const data = await response.json();
+            repoContext = data.content;
+            console.log("Konteks repositori berhasil dimuat.");
+            input.placeholder = "Silahkan bertanya...";
+            input.disabled = false;
+            submitButton.disabled = false;
+        } catch (error) {
+            console.error("Gagal memuat knowledge_base.json:", error);
+            input.placeholder = "Gagal memuat data. Coba refresh.";
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeChat();
+        loadRepoContext();
+    });
+
+    toggleBtn.addEventListener('click', () => popup.classList.contains('opacity-0') ? openPopup() : closePopup());
+    closeBtn.addEventListener('click', closePopup);
+    clearChatBtn.addEventListener('click', () => {
+        localStorage.removeItem(CHAT_HISTORY_KEY);
+        initializeChat();
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userMessage = input.value.trim();
+        if (!userMessage) return;
+
+        appendMessage(userMessage, 'user');
+        input.value = '';
+        input.disabled = true;
+        submitButton.disabled = true;
+
+        const loadingMessage = document.createElement('div');
+        loadingMessage.classList.add('message', 'ai');
+        loadingMessage.innerHTML = `<div class="message-content">...</div>`;
+        messagesContainer.appendChild(loadingMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        try {
+            const aiReply = await fetchAIResponse(userMessage);
+            loadingMessage.remove(); 
+            appendMessage(aiReply, 'ai');
+        } catch (error) {
+            loadingMessage.querySelector('.message-content').textContent = `Error: ${error.message}`;
+        } finally {
+            input.disabled = false;
+            submitButton.disabled = false;
+            input.focus();
+        }
+    });
+
+    async function fetchAIResponse(userMessage) {
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'AIzaSyDFBxU1Hqz1bm83YsMu8EKVbY2RU6GNsLc') {
+          throw new Error("API Key Gemini belum diatur.");
+        }
+        if (!repoContext) {
+            throw new Error("Konteks dari repositori belum dimuat.");
+        }
+        
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+
+        const systemInstruction = `Anda adalah asisten AI yang ahli mengenai sebuah repositori GitHub. Tugas utama Anda adalah menjawab pertanyaan pengguna HANYA berdasarkan KONTEKS yang disediakan di bawah ini. Jangan pernah menggunakan pengetahuan dari luar konteks ini. Jika informasi yang ditanyakan tidak ditemukan dalam konteks, jawab dengan jujur: "Maaf, informasi tersebut tidak dapat saya temukan di dalam repositori." Jangan mengarang jawaban.
+
+--- KONTEKS DARI REPOSITORI ---
+${repoContext}
+--- AKHIR DARI KONTEKS ---
+`;
+        
+        const chatHistory = Array.from(messagesContainer.children)
+            .filter(el => !el.textContent.includes('...'))
+            .map(msgEl => {
+                const text = msgEl.querySelector('.message-content').textContent.trim();
+                const role = msgEl.classList.contains('user') ? 'user' : 'model';
+                return { role, parts: [{ text }] };
+            });
+        
+        chatHistory.pop();
+
+        const requestBody = {
+            "contents": [...chatHistory, { "role": "user", "parts": [{ "text": userMessage }] }],
+            "systemInstruction": { "parts": [{ "text": systemInstruction }] }
+        };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("API Error:", errorData);
+                throw new Error(errorData.error.message || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                return data.candidates[0].content.parts[0].text;
+            } else {
+                console.warn("Struktur respons API tidak terduga:", data);
+                return "Maaf, terjadi kesalahan saat memproses respons dari AI.";
+            }
+        } catch (error) {
+            console.error("Gagal menghubungi API Gemini:", error);
+            return `Terjadi masalah koneksi ke server AI: ${error.message}`;
+        }
+    }
+  </script>
+</body>
+</html>
